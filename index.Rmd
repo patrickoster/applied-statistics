@@ -1,0 +1,18 @@
+---
+title: "Patrick Oster"
+description: |
+  Welcome! This site is a collection of projects, coursework, notes & resources which I have created during my graduate studies at LUC. Take a look around & enjoy! The site will be under construction while I complete my studies. Feel free to email poster@luc.edu with any inquiries.
+site: radix::radix_website
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(datasets)
+library(ggthemr)
+library(knitr)
+data("state")
+ggthemr("light")
+```
+
+![Rugby Player Tracker](figures/rugby_player_tracker.gif)

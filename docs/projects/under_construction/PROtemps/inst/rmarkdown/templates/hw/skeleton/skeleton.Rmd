@@ -1,0 +1,88 @@
+---
+title: "HW Template"
+author: "Patrick Oster"
+date: "3/2/2019"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+    df_print: kable
+---
+
+```{r setup, include = FALSE}
+# Chunk Options Setup 
+knitr::opts_chunk$set(echo = TRUE, # echo: print code that provides output?
+                      collapse = FALSE, # collapse: print all code and all output
+                      warning = FALSE, # warning: print warnings from code chunks?
+                      error = FALSE, # error: print errors from code chunks?
+                      message = FALSE # message: ???
+                      )
+# Loading Required Packages
+library(tidyverse)
+library(prettydoc)
+library(knitr)
+```  
+
+***  
+
+# (1)    
+```{r 1 Data, echo = FALSE}
+
+```
+
+## a.  
+```{r}
+
+```
+
+
+## b.  
+```{r}
+
+```
+
+
+## c.  
+```{r}
+
+```
+
+
+## d.  
+```{r}
+
+```
+
+
+
+***  
+# (2)  
+```{r}
+
+```
+
+## a.  
+```{r}
+
+```
+
+
+## b.  
+```{r}
+
+```
+
+
+## c.  
+```{r}
+
+```
+
+
+## d.  
+```{r}
+
+```
+
+
+***

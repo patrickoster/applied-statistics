@@ -1,0 +1,24 @@
+---
+title: "Spotify"
+author: "Patrick Oster"
+date: "12/24/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+data <- read.csv("/Users/Patrick/Dropbox/data/spotify/spotify.csv")
+```
+
+```{r}
+summary(data)
+glimpse(data)
+```
+
+```{r}
+attributes <- data %>% select(acousticness, danceability, energy, instrumentalness, key, liveness, loudness, speechiness, tempo, valence)
+kable(cor(attributes))
+```
+

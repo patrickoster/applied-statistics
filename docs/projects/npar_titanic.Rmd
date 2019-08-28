@@ -1,0 +1,193 @@
+---
+title: Titanic Survival Prediction Project
+subtitle: Random Forest Modeling
+author: Patrick Oster
+date: "`r format(Sys.time(), '%A %B %d, %Y; %H:%M:%S %p')`"
+output:
+  html_document:
+    theme: yeti
+    highlight: tango
+    code_folding: show
+    toc: true
+    toc_float: true
+---
+
+```{r Setup, include = FALSE}
+rm(list = ls())
+## Installing/Loading Required Packages
+pkgs <- list('tidyverse', 'knitr', 'prettydoc', 'tufte', 'rmdformats', 'formatR', 'randomForest', 'rpart', 'ISLR', 'rpart.plot', 'caret', 'transformr', 'mice', 'VIM', 'norm', 'broom', 'lattice', 'MASS', 'corrplot')
+
+for(i in 1:length(pkgs)){ 
+  if(unlist(pkgs)[i] %in% rownames(installed.packages())){ 
+    print(unlist(pkgs)[i]) 
+    library(pkgs[[i]], character.only = TRUE) 
+  } else { 
+      install.packages(unlist(pkgs)[i]) 
+    library(pkgs[[i]], character.only = TRUE) 
+    print(unlist(pkgs)[i]) 
+  } 
+}
+  
+## Setting Global Code Chunk Options
+knitr::opts_chunk$set(fig.height = 8,
+                      echo = T,        # logical/numeric: include code in document
+                      include = T,     # logical: include chunk output
+                      cache = F,       # logical: lazy loading chunk output
+                      prompt = F,      # logical: include prompts (??)
+                      tidy = T,        # logical/factor: reformat code
+                      comment = NA,    # character prefix to be put before code output
+                      message = T,     # logical: preserve messages
+                      warning = F,     # logical: preserve warnings
+                      results = "hold")     
+
+## Other Global Options  
+options(scipen = 999)                  # Forces decimals rather than scientific notation
+
+```
+
+
+# Introduction
+
+In 1912, the Titanic sank after colliding with an iceberg leading to a massive lost of life in which nearly three quarters of the passengers perished. The primary reason that the shipwreck led to such loss of life was that there were not enough lifeboats for the 2224 passengers and crew on board. Although some chance was involved in surviving the wreck, certain groups of people were more likely to survive than others, such as women, children, and the upper-class. The challenge is to conduct the analysis on what sorts of people were likely to survive using a training dataset and a test dataset with the survival indicator redacted.  
+
+# Data  
+
+The dataset provided contains the binary response variable for survival with 1 indicating a passenger's survival of the wreck and 0 indicating death. Around 26% of the passengers aboard the titanic perished in the training dataset. Potential predictors provided include an indicator for sex, patron class, passenger name, number of parents & children aboard, ticket, ticket price, cabin & departure location. In the 1999 film "The Titanic", a crewmember shouts "Women & children first!" This is a hint to the passengers response to the crash and provides insight into what variables are important in determining survival; age and gender should be important variables for predicting survival. The other variables provided may be proxies for other important factors for survival, including socio-economic status and family size. One problem with the dataset is missing information. Values for Age, cabin, and embarkment location are missing at different rates and for different reasons. Before analysis was conducted the missing information was imputed in order to make improve prediction accuracy in modeling later.  
+
+# Methods  
+
+The missing data were imputed using multivariate imputation by chain equations, also known as fully conditional specification. MICE involves replacing missing values where each missing feature is modeled using a separate model and can handle various types of data, whether they be numeric, and ordered/unordered categorical variables. Imputation was performed with five iterations using random forests to model the missing information for each of the three missing features. A binary response prediction model was created using an unsupervised machine learning method called random forests; this technique involves aggregating decision trees which are trained using random subsets of the variables. Five variables selected from patron class, sex, age, number of siblings and spouses aboard, number of parents and children aboard, fare payed, and embarkment location were selected for decision in each of the 5000 trees.
+
+# Results & Conclusions  
+
+The random forest model performed well in prediction on the test set predicting survival outcomes correctly 82% of the time considering only a subset of the unengineered provided variables. As expected sex and age were the most important predictors in terms of predicting survival outcome. Patron class, fare, and number of siblings and spouses were also important predictors, most likely because they capture variation due to socio-economic status, a latent variable which may be highly correlated with survival. Although the random forest method employed was relatively successful in predicting survival outcome, there are ways to improve the model. First, a subset of the variables was used in training the random forest model. It may been possible to manipulate the data more and engineer more important features. For example, the cabin variable could have been examined further and deconstructed in order to develop some quantifiable measure of patron class. A variety of other methods could have been used for imputation which may contribute to the model's accuracy in prediction, and the random forest model could be more tuned to external datasets through thorough cross-validation to improve.  
+
+## MICE  
+
+```{r}
+#df <- read.csv("/Users/Patrick/Dropbox/data/titanic/train2.csv",header = TRUE, na.strings = c("","NA"))
+train <- read.csv("/Users/Patrick/Dropbox/data/titanic/train2.csv", 
+               header = TRUE, 
+               na.strings = c("","NA"))
+test <- read.csv("/Users/Patrick/Dropbox/data/titanic/test2.csv", 
+                 header = TRUE, 
+                 na.strings = c("","NA"))
+test$Survived <- as.factor("NA")
+df <- rbind(train, test)
+# Change variable types
+factor.names <- c('PassengerId', 'Pclass', 'Sex', 'Embarked')
+train$PassengerId <- as.factor(train$PassengerId)
+train$Pclass <- as.factor(train$Pclass)
+train$Sex <- as.factor(train$Sex)
+train$Embarked <- as.factor(train$Embarked)
+mat <- mice(train, maxit = 0) 
+mat.pred <- mat$predictorMatrix
+mat.pred[, c("PassengerId", "Name", "Ticket", "Cabin", "Age")] <- 0   
+cheese <- mice(train, predictorMatrix = mat.pred, m = 5, method = "pmm")
+cheddar <- complete(cheese)
+df <- cheddar
+```
+
+
+## Survival Rates  
+
+```{R}
+df.survival <- data.frame(Survived = sum(train$Survived)/nrow(df)) %>% 
+  mutate(Perished = 1 - Survived)
+kable(df.survival)
+```  
+
+## Data Summary  
+
+```{r}
+summary(df)
+```  
+
+## Exploring Missingness  
+```{R}
+matrixplot(train, sortby = "Age") 
+md.pattern(train)
+```  
+
+# Full Code Appendix  
+
+```{r}
+train <- read.csv("/Users/Patrick/Dropbox/data/titanic/train2.csv", 
+               header = TRUE, 
+               na.strings = c("","NA"))
+test <- read.csv("/Users/Patrick/Dropbox/data/titanic/test2.csv", 
+                 header = TRUE, 
+                 na.strings = c("","NA"))
+test$Survived <- as.factor("NA")
+df <- rbind(train, test)
+
+df.survival <- data.frame(Survived = sum(train$Survived)/nrow(df)) %>% 
+  mutate(Perished = 1 - Survived)
+kable(df.survival)
+
+matrixplot(df, sortby = "Age") 
+md.pattern(df)
+
+factor.names <- c('PassengerId', 'Pclass', 'Sex', 'Embarked')
+train$PassengerId <- as.factor(train$PassengerId)
+train$Pclass <- as.factor(train$Pclass)
+train$Sex <- as.factor(train$Sex)
+train$Embarked <- as.factor(train$Embarked)
+mat <- mice(train, maxit = 0) 
+mat.pred <- mat$predictorMatrix
+mat.pred[, c("PassengerId", "Name", "Ticket", "Cabin", "Age")] <- 0   
+cheese <- mice(train, predictorMatrix = mat.pred, m = 5, method = "pmm")
+cheddar <- complete(cheese)
+df <- cheddar
+stripplot(cheese)
+
+write.csv(cheddar, file = "titanic_imputations", 
+          fileEncoding = "macroman", 
+          row.names = FALSE)
+
+train.df <- df[1:891,]
+test.df <- df[892:1309,]
+
+
+set.seed(2634)
+df.train <- train.df %>% sample_frac(size = 3/4)
+df.test <- train.df %>% setdiff(df.train)
+
+# Build the model (note: not all possible variables are used)
+underwater.forest <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
+                                  data = df.train, 
+                                  ntree = 5000, 
+                                  mtry = 5, 
+                                  importance = TRUE, 
+                                  oob = TRUE)
+
+varImpPlot(underwater.forest)
+plot(underwater.forest)
+legend('topright', colnames(underwater.forest$err.rate), col=1:3, fill=1:3)
+
+# Predicting Using Test Data
+survival.pred <- predict(underwater.forest, newdata = df.test, OOB = TRUE)
+# MSE
+mean((as.integer(survival.pred) - (as.integer(df.test$Survived) + 1))^2)
+
+# Submission predictions
+test <- read.csv("/Users/Patrick/Dropbox/data/titanic/test2.csv")
+test$PassengerId <- as.factor(test$PassengerId)
+test$Pclass <- as.factor(test$Pclass)
+test$Sex <- as.factor(test$Sex)
+test$Embarked <- as.factor(test$Embarked)
+
+mat <- mice(test, maxit = 0) 
+mat.pred <- mat$predictorMatrix
+mat.pred[, c("PassengerId", "Name", "Ticket", "Cabin", "Age")] <- 0   
+cheese <- mice(test, predictorMatrix = mat.pred, m = 5, method = "pmm")
+cheddar <- complete(cheese)
+
+cheddar$Survived <- predict(underwater.forest, newdata = test)
+pred.out <- cbind(cheddar$PassengerId, cheddar$Survived)
+colnames(pred.out) = c("PassengerID","Survived")
+write.csv(pred.out, file = "poster_titanic_predictions", 
+          fileEncoding = "macroman", 
+          row.names = FALSE)
+```
+

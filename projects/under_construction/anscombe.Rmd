@@ -1,0 +1,25 @@
+---
+title: "Anscombe Data"
+author: "Patrick Oster"
+date: "2/19/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+dat <- datasets::anscombe
+datLong <- data.frame(
+  group  = rep(1:4, each = 11),
+    x = unlist(dat[,c(1:4)]),
+    y = unlist(dat[,c(5:8)]), 
+    row.names = NULL)
+library(GGally)
+library(tidyverse)
+```
+
+
+```{r}
+ggpairs(dat)
+ggpairs(datLong)
+```
+

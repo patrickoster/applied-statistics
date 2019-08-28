@@ -1,0 +1,346 @@
+---
+title: "Statistical Consulting: National Parks"
+author: 
+- "Patrick Oster, Meng Xie, Matthew Leiner"
+date: "December 12th, 2018"
+abstract: |
+  Analyzing the Impact of the NPS's Entrance Fee Proposal on Revenue and Visitation Using Statistical Models Trained on Park-Specific Panel Data
+output:
+  prettydoc::html_pretty:
+    highlight: github
+    theme: cayman
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = FALSE, 
+                      warning = FALSE, 
+                      error = FALSE, 
+                      message = FALSE)
+library(tidyverse)
+library(readxl)
+library(zoo)
+library(readxl)
+library(tidyverse)
+library(lme4)
+library(lubridate)
+library(readr)
+library(car)
+library(knitr)
+library(corrplot)
+library(ggthemr)
+ggthemr('fresh')
+```
+
+[Home Page](https://patrickoster.github.io/)
+
+```{r, include = FALSE}
+# BACKGROUND CLEANING
+
+# loading supplemental fee data from the DOI & visitation data
+df_DOI <- read_excel("/Users/Patrick/Dropbox/data/npv/new_fee.xlsx", sheet = "tall")
+df_VIS <- read_excel("/Users/Patrick/Dropbox/data/npv/national_park_data_v2.xlsx", sheet = "visitation")
+# Filtering vis data by year due to limitations availability of corresponding fee data
+df_vis <- df_VIS %>% select(Year, Visitors, Park) %>% filter(Year > 1992)
+df_doi <- df_DOI
+names(df_vis) <- c("year", "visitors", "park")
+# Cleaning park name column
+designations <- c(" & ", "NP", "NHP", "NM", "NHS", "NRA", "Pres", "NS")
+desig_str <- str_c("\\b", designations, "\\b", collapse="|")
+new_names <- str_remove_all(df_doi$park, desig_str) 
+new_names <- trimws(new_names, "right")
+df_doi$park <- new_names
+df_doi$park <- as.factor(df_doi$park)
+# Cleaning fee type column
+new_types <- str_remove_all(df_doi$fee_type, "pre")
+new_types <- str_remove_all(new_types, "[.]")
+df_doi$fee_type <- new_types
+df_doi$fee_type <- as.factor(df_doi$fee_type)
+# Cleaning fee column
+df_doi$fee <- str_replace_all(df_doi$fee, "None", "0")
+df_doi$fee <- str_replace_all(df_doi$fee, "none", "0")
+df_doi$fee <- str_replace_all(df_doi$fee, "no previous fees", "0")
+df_doi$fee <- str_replace_all(df_doi$fee, "no preveious fees", "0")
+# Prepping for cleaning duplicate park names
+old_year_levels <- distinct(df_doi, year)
+df_doi$park <- as.factor(df_doi$park)
+df_vis$park <- as.factor(df_vis$park)
+df_doi$year <- as.factor(df_doi$year)
+df_vis$year <- as.factor(df_vis$year)
+# Manually cleaning duplicate park names
+levels(df_doi$park)[levels(df_doi$park) == 'Sequoia-Kings Canyon'] <- 'Sequoia'
+levels(df_doi$park)[levels(df_doi$park) == 'Sequoia-Kings Canyon N Parks'] <- 'Sequoia'
+levels(df_doi$park)[levels(df_doi$park) == 'Castillo de San Marcos'] <- 'Castillo De San Marcos'
+levels(df_doi$park)[levels(df_doi$park) == 'Chickamauga-Chattanooga NMP'] <- 'Chickamauga and Chattanooga'
+levels(df_doi$park)[levels(df_doi$park) == 'Dry Tortuguas'] <- 'Dry Tortugas'
+levels(df_doi$park)[levels(df_doi$park) == 'Everglades  - Homestead'] <- 'Everglades'
+levels(df_doi$park)[levels(df_doi$park) == 'Florissant Fossil Beds'] <- 'Florrisant Fossil Beds'
+levels(df_doi$park)[levels(df_doi$park) == 'Fort McHenry HS'] <- 'Fort McHenry'
+levels(df_doi$park)[levels(df_doi$park) == 'Fort Necessity NB - Western Penn Parks'] <- 'Fort Necessity'
+levels(df_doi$park)[levels(df_doi$park) == 'FredericksburgSpotsylvania NMP'] <- 'Fredericksburg and Spotsylvania'
+levels(df_doi$park)[levels(df_doi$park) == 'FredericksburgSpotsylvania'] <- 'Fredericksburg and Spotsylvania'
+levels(df_doi$park)[levels(df_doi$park) == 'Harry S.Truman'] <- 'Harry S Truman'
+levels(df_doi$park)[levels(df_doi$park) == 'Home of FDR/Library - was ROVA'] <- 'Home of FDR'
+levels(df_doi$park)[levels(df_doi$park) == "John F. Kennedy"] <- "John F Kennedy"
+levels(df_doi$park)[levels(df_doi$park) == 'LewisClark  aka. Fort Clatsop'] <- 'LewisClark'
+levels(df_doi$park)[levels(df_doi$park) == 'LewisClark NHT'] <- 'LewisClark'
+levels(df_doi$park)[levels(df_doi$park) == "Longfellow House - Washington's Headquarters"] <- 'Longfellow'
+levels(df_doi$park)[levels(df_doi$park) == 'Manassas NBP'] <- 'Manassas'
+levels(df_doi$park)[levels(df_doi$park) == 'Pea Ridge NMP'] <- 'Pea Ridge'
+levels(df_doi$park)[levels(df_doi$park) == "Perry's VictoryInternational Peace Memorial"] <- "Perry's Victory"
+levels(df_doi$park)[levels(df_doi$park) == 'Petersburg NB'] <- 'Petersburg'
+levels(df_doi$park)[levels(df_doi$park) == 'Prince William Forest Park'] <- 'Prince William Forest'
+levels(df_doi$park)[levels(df_doi$park) == "Pu'uhonua O Honaunau"] <- 'Puuhonua O Honaunau'
+levels(df_doi$park)[levels(df_doi$park) == 'Saint-Gaudens'] <- 'Saint Gaudens'
+levels(df_doi$park)[levels(df_doi$park) == 'Shiloh NMP'] <- 'Shiloh'
+levels(df_doi$park)[levels(df_doi$park) == 'Sleeping Bear Dunes NL'] <- 'Sleeping Bear Dunes'
+levels(df_doi$park)[levels(df_doi$park) == 'Theodore Roosevelt'] <- 'Theodore Roosevelt Birthplace'
+levels(df_doi$park)[levels(df_doi$park) == 'Theodore Roosevelt Birthplace  (Manhattan Sites)'] <- 'Theodore Roosevelt Birthplace'
+levels(df_doi$park)[levels(df_doi$park) == 'Vanderbuilt Mansion'] <- 'Vanderbilt Mansion'
+levels(df_doi$park)[levels(df_doi$park) == 'Vicksburg NMP'] <- 'Vicksburg'
+levels(df_doi$park)[levels(df_doi$park) == "Wilson's Creek NB"] <- "Wilson's Creek"
+levels(df_vis$park)[levels(df_vis$park) == 'Lewis and Clark'] <- 'LewisClark'
+levels(df_vis$park)[levels(df_vis$park) == 'John F. Kennedy'] <- 'John F Kennedy'
+levels(df_vis$park)[levels(df_vis$park) == 'Vanderbuilt Mansion'] <- 'Vanderbilt Mansion'
+# Prepping for merge of visitation & fee data
+years <- c(seq(from = 1993, to = 2016, by = 1))
+fee_types <- c("person", "annual", "vehicle")
+df_doi$year <- as.character(df_doi$year)
+df_vis$year <- as.character(df_vis$year)
+df_doi$park <- as.character(df_doi$park)
+df_vis$park <- as.character(df_vis$park)
+df_merger <- left_join(x = df_doi, y = df_vis, by = c("park", "year"))
+# Selecting years & fee types relevant to scope of the project
+df_merger <- df_merger %>% filter(year %in% years, fee_type %in% fee_types) 
+df_merger$park <- as.factor(df_merger$park)
+df_merger$state <- as.factor(df_merger$state)
+df_merger$region <- as.factor(df_merger$region)
+df_merger$fee_type <- as.factor(df_merger$fee_type)
+df_merger$year <- as.factor(df_merger$year)
+df_merger$fee <- as.numeric(df_merger$fee)
+df_merger$visitors <- as.numeric(df_merger$visitors)
+# Identify top 17 parks (13 which require no further cleaning & 4 particularly problematic parks)
+pn13 <- c("Bryce Canyon","Canyonlands","Grand Canyon","Grand Teton","Olympic","Sequoia","Yellowstone","Yosemite","Zion","Acadia","Mount Rainier","Rocky Mountain","Joshua Tree")
+pn_prob <- c("Shenandoah", "Arches", "Denali", "Glacier")
+# Filtering for 13 non-problematic parks & incrementally cleaning & adding problem parks
+df_13 <- df_merger %>% 
+  filter(park %in% pn13) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_shan <- df_merger %>% 
+  filter(park == "Shenandoah", is.na(fee) == FALSE) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_14 <- bind_rows(df_13, df_shan)
+df_arch <- df_merger %>% 
+  filter(park == "Arches", is.na(fee) == FALSE) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_15 <- bind_rows(df_14, df_arch)
+df_denali <- df_merger %>% 
+  filter(park == "Denali", is.na(fee) == FALSE) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_16 <- bind_rows(df_15, df_denali)
+df_glacier <- df_merger %>% 
+  filter(park == "Glacier", is.na(fee) == FALSE) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_top17 <- bind_rows(df_16, df_glacier)
+df_17 <- df_top17 %>% arrange(year, park, fee_type, fee)
+df_full <- df_merger %>% distinct(park, year, fee, fee_type, visitors)
+# Partitioning missing data to look for trends 
+df_missing <- df_merger %>% 
+  filter(park %in% pn_prob, is.na(fee)) %>% 
+  arrange(park, year, fee_type) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+df_not_missing <- df_merger %>% 
+  filter(park %in% pn_prob, is.na(fee) == FALSE) %>% 
+  arrange(park, year, fee_type) %>% 
+  distinct(park, year, fee, fee_type, visitors)
+# Paritioning by fee type
+df_person <- df_17 %>% 
+  group_by(park, fee_type) %>% 
+  filter(fee_type == "person") %>% 
+  mutate(chg_vis = visitors - lag(zoo(visitors), 1)) %>% 
+  mutate(chg_fee = fee-lag(zoo(fee))) %>% 
+  arrange(park, year)
+df_vehicle <- df_17 %>% 
+  group_by(park, fee_type) %>% 
+  filter(fee_type == "vehicle") %>% 
+  mutate(chg_vis = visitors - lag(zoo(visitors), 1)) %>% 
+  mutate(chg_fee = fee-lag(zoo(fee))) %>% 
+  arrange(park, year)
+df_annual <- df_17 %>% 
+  group_by(park, fee_type) %>% 
+  filter(fee_type == "annual") %>% 
+  mutate(chg_vis = visitors - lag(zoo(visitors), 1)) %>% 
+  mutate(chg_fee = fee-lag(zoo(fee))) %>% 
+  arrange(park, year)
+df <- bind_rows(df_person, df_vehicle, df_annual)
+df_person <- df_person %>% transmute(year = as.factor(year), 
+                       fee = as.numeric(fee), 
+                       visitors = as.numeric(visitors), 
+                       chg_vis = as.numeric(chg_vis), 
+                       chg_fee = as.numeric(chg_fee))
+df_vehicle <- df_vehicle %>% transmute(year = as.factor(year), 
+                       fee = as.numeric(fee), 
+                       visitors = as.numeric(visitors), 
+                       chg_vis = as.numeric(chg_vis), 
+                       chg_fee = as.numeric(chg_fee))
+df_annual <- df_annual %>% transmute(year = as.factor(year), 
+                       fee = as.numeric(fee), 
+                       visitors = as.numeric(visitors), 
+                       chg_vis = as.numeric(chg_vis), 
+                       chg_fee = as.numeric(chg_fee))
+df <- df %>% transmute(year = as.factor(year), 
+                       fee = as.numeric(fee), 
+                       visitors = as.numeric(visitors), 
+                       chg_vis = as.numeric(chg_vis), 
+                       chg_fee = as.numeric(chg_fee))
+# Cleaning environment before exploring the data
+rm(df_13, df_14, df_15, df_16, df_arch, df_denali, df_glacier, df_shan, df_top17, df_doi, df_vis, df_VIS, df_DOI, old_year_levels, desig_str, designations, fee_types, new_names, new_types, pn_prob, pn13, years)
+#write.csv(df, file = "filename")
+```
+
+# Exploratory Analysis
+### National Park Fee Change Proposal, October 2017
+```{r}
+fee_types <- c("Per-Person", "Per-Motorcycle", "Per-Vehicle", "Park-Specific Annual", "Annual")
+nps_proposal <- data.frame('Pre-Existing Fees' = c("$15", "$25", "$30", "$75", "$80"),
+                           'Proposed Fees' = c("$30", "$50", "$70", "$75", "$80"),
+                           row.names = fee_types,
+                           check.names = FALSE)
+proposal_1 <- kable(nps_proposal, trim = TRUE, align = "r", caption = "NPS October 2017 Fee Change Proposal")
+
+counter_proposal <- data.frame('Group'= c(rep("One", 5), rep("Two", 5), rep("Three", 5), rep("Four", 5)),
+                               'Fee Type' = c(rep(fee_types, 4)),
+                               'Current Fee' = c("$7", "$10", "$15", "$30", "$80",
+                                                       "$10", "$15", "$20", "$40", "$80",
+                                                       "$12", "$20", "$25", "$50", "$80",
+                                                       "$15", "$25", "$30", "$60", "$80"),
+                               'Proposed Fee' = c("$10", "$15", "$20", "$35", "$80",
+                                                   "$15", "$20", "$25", "$45", "$80",
+                                                   "$15", "$25", "$30", "$55", "$80",
+                                                   "$20", "$30", "$35", "$70", "$80"),
+                               check.names = FALSE)
+
+#counter_proposal %>% unite('Current Fee', 'Proposed Fee', col = "Change", sep = " -> ") 
+proposal_2 <- kable(counter_proposal, trim = TRUE, align = "r", caption = "Counter Proposal")
+proposal_1; proposal_2
+```
+
+### Combined Fee Changes
+```{r}
+# Combined fee types
+r <- as.data.frame(cor(df[,4:7], use = "complete.obs")); r
+ggplot(df, aes(x = visitors)) + geom_histogram() + labs(title = "Distribution of Visitation",
+                                                        subtitle = "17 Most visited Parks",
+                                                        x = "Number of Annual Visitors", 
+                                                        y = "Frequency")
+ggplot(df, aes(x = year, y = fee, color = fee_type)) + 
+  geom_jitter() + theme(axis.text.x = element_blank()) + 
+  labs(title = "Distribution of Visitation By Park",
+       subtitle = "17 Most visited Parks",
+       x = "Number of Annual Visitors",
+       y = "Dollars") + scale_fill_discrete(name = "Fee Type")
+ggplot(df, aes(x = year, y = visitors)) + 
+  facet_wrap(facets = df$park, scales = "free_x") + 
+  geom_point() + theme(axis.text.x = element_blank()) + 
+  labs(title = "Distribution of Visitation By Park",
+       subtitle = "17 Most visited Parks",
+       x = "Number of Annual Visitors",
+       y = "Frequency")
+ggplot(df, aes(x = year, y = fee, color = fee_type)) + 
+  facet_wrap(facets = df$park, scales = "free_x") + 
+  geom_point() + theme(axis.text.x = element_blank()) + 
+  labs(title = "Distribution of Visitation By Park",
+       subtitle = "17 Most visited Parks",
+       x = "Number of Annual Visitors",
+       y = "Frequency")
+ggplot(df, aes(x = fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Entrance Fees",
+       subtitle = "All Fee Types",
+       x = "Entrance Fee",
+       y = "Frequency")
+ggplot(df, aes(x = chg_vis)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Change in Visitation",
+       subtitle = "17 Most visited Parks",
+       x = "Year to Year Change in Visitation",
+       y = "Frequency")
+ggplot(df, aes(x = chg_fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Change in Fee",
+       subtitle = "All Fee Types",
+       x = "Year to Year Change in Fee",
+       y = "Frequency")
+```
+
+### Per Person Fee Change
+```{r}
+cor(df_person[,4:7], use = "complete.obs")
+ggplot(df_person, aes(x = fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Entrance Fees",
+       subtitle = "Per Person",
+       x = "Per Person Entrance Fee",
+       y = "Frequency of Fee")
+ggplot(df_person, aes(x = chg_fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Change in Fee ",
+       subtitle = "Per Person",
+       x = "Year to Year Change in Per Person Fee",
+       y = "Frequency of Fee Change")
+```
+
+### Per Vehicle Fee Change
+```{r}
+cor(df_vehicle[,4:7], use = "complete.obs")
+ggplot(df_vehicle, aes(x = fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Entrance Fees",
+       subtitle = "Per Vehicle",
+       x = "Per Vehicle Entrance Fee",
+       y = "Frequency of Fee")
+ggplot(df_vehicle, aes(x = chg_fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Change in Entrance Fee ",
+       subtitle = "Per Vehicle",
+       x = "Year to Year Change in Per Vehicle Fee",
+       y = "Frequency of Fee Change")
+```
+
+### Annual Pass Fee Change
+```{r}
+cor(df_annual[,4:7], use = "complete.obs")
+ggplot(df_annual, aes(x = fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Entrance Fees",
+       subtitle = "Annual Pass",
+       x = "Annual Entrance Fee",
+       y = "Frequency of Fee")
+ggplot(df_annual, aes(x = chg_fee)) + 
+  geom_histogram() + 
+  labs(title = "Distribution of Change in Fee",
+       subtitle = "Annual Pass",
+       x = "Year to Year Change in Annual Fee",
+       y = "Frequency of Fee Change")
+```
+
+
+# Report: Evaluating National Park Fee Change Proposals
+
+## Introduction
+  National park visitor entrance fees have been philosophically and politically charged since they were first encouraged by Congress in the Independent Offices Appropriation Act of 1952. At the dawn of the National Park Service in 1916, national public lands were considered an public good to which all citizens should have equal access; because public goods are typically heavily subsidized by the government, the economic burden has fallen on the government causing parks revenue to be a fraction of government expenditures on parks. Julius A. Krug, Secretary of the Interior, revealed that revenue from parks in 1947 was just one ninth that of government investment in national public lands. Reports detailing the magnitude of the difference in revenue and expenditure led to a provision in the 1952 act stating that any service provided by a Federal agency should be self-sustaining. This provision laid the groundwork for a widespread entrance fee structure by giving the director of the NPS the authority "to prescribe therefor such fee, charge, or price, if any, as he shall determine to be fair and equitable taking into consideration direct and indirect cost to the Government, value to the recipient, public policy or interest served, and other pertinent facts." Although the framework had been set for more than a decade, a wide-spread fee structure was not adopted until the Land and Water Conservation Fund Act of 1965 (LWCA); this pricing structure was the first with any semblance of the current structure, mandating fees for temporary, sinlge-use permits with annual passes costing no more than $7. Despite changes to the widespread fee structure and park-specific variations since the LWCA, NPS revenues have not come close to matching the expenditures necessitated by demand for recreational use of parks. Either ubiquitous fee structures are simply ineffective, possibly because they are impractible to enforce at many parks, or pricing structures have not applied entrance fees substantial enough to reach the equilibrium for supply and demand of park services.
+  According to a press release in February 2016, the NPS had built up a maintenance backlog of more than ten billion dollars. In October of 2017, the National Park Service proposed an unprecedented change to the entrance fee structure. The NPS proposal would implement a peak season surge pricing structure effectively doubling per person and per vehicle fees at the 17 most visited parks during each park's busiest 5 month period of the year. Public outcry quickly ensued the proposal during a public comment period; concerns regarding the proposed change disproportionately affecting families of lower socio-economic status and philosophical debate regarding the nature of national public lands as an economic good led to a more modest counter proposal. The counter proposal involved raising the entrance fees by around $5 across the board for all 117 fee-charging parks by January of 2020. Because a change as drastic the initial NPS proposal has never been imposed, it is difficult to compare the relative effects of each proposal on revenue and visitation. The motivation for this study is to analyze the potential impacts of the original NPS proposal on revenue using statistical models. Due to the scarcity of park-specific panel data on revenue from entrance fees, visitation will be modeled as a function of entrance fees since revenue is primarily a function of entrance fees collected from visitors. 
+
+`r proposal_1`
+`r proposal_2`
+
+## Data
+
+
+
+
+## Bibliography
+- [Original NPS Entrance Fee Change Proposal](https://www.nps.gov/orgs/1207/10-24-2017-fee-changes-proposal.htm)
+- [History of NPS Visitor Fees](https://www.nps.gov/parkhistory/online_books/mackintosh3/fees2.htm)
+

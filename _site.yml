@@ -1,0 +1,30 @@
+name: "github"
+title: "P. Oster"
+description: |
+  patrickoster
+output_dir: "docs"
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "About"
+      href: about.html
+    - text: "Projects"
+      menu:
+        - text: "Datafest"
+          href: https://patrickoster.github.io/applied-statistics/datafest
+    - text: "Coursework"
+      menu:
+        - text: "CDA"
+          href: https://patrickoster.github.io/applied-statistics/cda
+        - text: "NPAR"
+          href: https://patrickoster.github.io/applied-statistics/npar
+        - text: "MVAR"
+          href: https://patrickoster.github.io/applied-statistics/mvar
+    - text: "Notes"
+      menu:
+        - text: "R Markdown Notes"
+          href: https://patrickoster.github.io/applied-statistics/notes/webr
+output: 
+  radix::radix_article:
+    #css: mainstyle.css
