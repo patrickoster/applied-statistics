@@ -1,0 +1,21 @@
+---
+title: "Multivariate Statistical Analysis"
+description: |
+  Graduate Level Coursework in Multivariate Data Statistical at LUC
+author:
+  - name: Partick Oster
+    url: https://patrickoster.github.io
+    affiliation: LUC Statistics Department
+    affiliation_url: https://patrickoster.github.io/
+date: "`r Sys.Date()`"
+site: radix::radix_website
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+What is MVAR?  
+
+Multivariate Statistical Analysis  

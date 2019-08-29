@@ -1,0 +1,360 @@
+---
+title: "Formatting RStudio Output"
+subtitle: "Guide to customizing Rmd, YAML, & HTML"
+author: "Patrick Oster"
+output: 
+  html_document:
+    code_folding: "hide"
+    theme: sandstone
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pkgs <- list('tidyverse', 'prettydoc', 'rmdformats', 'Rcpp', 'DT', 'plotly', 'gapminder', 'knitr', 'addinslist')
+
+for(i in 1:length(pkgs)){
+  if(unlist(pkgs)[i] %in% rownames(installed.packages())){
+    print(unlist(pkgs)[i])
+  } else {
+    install.packages(unlist(pkgs)[i])
+  }
+}
+
+for(i in 1:length(pkgs)){
+  library(pkgs[[i]], character.only = TRUE)
+}
+```
+
+# [YAML](https://holtzy.github.io/Pimp-my-rmd/)  
+* `html_document:` options
+    + `code_folding: "hide"` - hides all code in document but provides drop down menu at the top of the document to reveal code
+    + `theme: sandstone` - theme name
+        + Use any [bootswatch theme](https://bootswatch.com/) to automatically customize the font and general appearance of your document
+    + `highlight:` - syntax highlighting style
+        + [possible styles](https://bookdown.org/yihui/bookdown/yaml-options.html): default, tango, pygments, kate, monochrome, espresso, zenburn, haddock
+    
+* [Template packages](http://www.datadreaming.org/post/r-markdown-theme-gallery/):
+    + [prettydoc](http://yixuan.cos.name/prettydoc/)
+        + [themes](http://yixuan.cos.name/prettydoc/themes.html): cayman, tactile, architect, leonids, hpstr
+        + Setting template theme: `output:
+        prettydoc::html_pretty:
+        theme: cayman
+        highlight: github`
+    + [rmdformats](https://bookdown.org/yihui/rmarkdown/rmdformats.html):
+        + themes: material, readthedown, html_clean, html_docco
+        + setting template theme: `output: rmdformats::material`
+
+
+# [Add a github link in the corner of your document](https://raw.githubusercontent.com/holtzy/epuRate/master/inst/rmarkdown/templates/epurate/resources/header.html) {#internallink1}
+* Just paste the provided code in your header.html, like you have done to add a footer.
+* Sidenote: Use an anchor of form {#link} to link to an earlier section of your document to `[link](#link)`
+
+
+
+<div class = "row">
+  
+<div class = "col-md-4">
+<br><br>Since R Markdown use the [bootstrap framework](https://getbootstrap.com/docs/4.0/layout/grid/) under the hood. It is possible to benefit its powerful grid system. Basically, you can consider that your row is divided in 12 subunits of same width. You can then choose to use only a few of this subunits.
+</div>
+  
+<div class = "col-md-4">
+<br><br>Here, I use 3 subunits of size 4 (4x3=12). The last column is used for a plot. You can read more about the grid system [here](bootstrap grid system). I got this result showing the following code in my R Markdown document.
+</div>
+  
+<div class = "col-md-4">
+```{r, message=FALSE, echo=FALSE}
+ggplot( mtcars, aes(x=mpg)) + geom_histogram(fill="skyblue", alpha=0.5) + theme_minimal()
+```
+</div>
+</div>
+
+
+
+# Use buttons or tabs for sub-chapters {.tabset .tabset-fade .tabset-pills}
+***
+Save space in your document using buttons or tabs for sub chapters. Add this code at the end of your title:
+
+## First
+A first section
+
+## Second
+<div class = "row">
+  
+<div class = "col-md-4">
+<br><br>Since R Markdown use the [bootstrap framework](https://getbootstrap.com/docs/4.0/layout/grid/) under the hood. It is possible to benefit its powerful grid system. Basically, you can consider that your row is divided in 12 subunits of same width. You can then choose to use only a few of this subunits.
+</div>
+  
+<div class = "col-md-4">
+<br><br>Here, I use 3 subunits of size 4 (4x3=12). The last column is used for a plot. You can read more about the grid system [here](bootstrap grid system). I got this result showing the following code in my R Markdown document.
+</div>
+  
+<div class = "col-md-4">
+```{r, message=FALSE, echo=FALSE}
+ggplot( mtcars, aes(x=mpg)) + geom_histogram(fill="skyblue", alpha=0.5) + theme_minimal()
+```
+</div>
+</div>
+
+## Third
+CSS for Customizing Buttons:  
+```
+.btn {
+    border-width: 0 0px 0px 0px;
+    font-weight: normal;
+    text-transform: ;
+}
+.btn-default {
+    color: #2ecc71;
+    background-color: #ffffff;
+    border-color: #ffffff;
+}
+```
+
+
+# Tables  
+```{r}
+datatable(mtcars, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+
+
+# Highlighting/CSS Styling for Specific Text/code Chunks  
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+
+- This is my first conclusion
+- This is my second conclusion
+
+</div>
+
+
+
+
+# Background headers with [parallax](https://holtzy.github.io/Pimp-my-rmd/#parallax)
+
+* requires customized css & header.html files
+
+
+
+# Caching Code  
+- [Read this](https://yihui.name/knitr/demo/cache/)
+
+
+
+
+
+# Linking  
+* [Internal link example](#internallink1)
+* [Hyperlink to internal location example](#internallink1)  
+
+
+
+# Interactive graphing  
+```{r}
+p <- gapminder %>%
+  filter(year==1977) %>%
+  ggplot( aes(gdpPercap, lifeExp, size = pop, color=continent)) +
+  geom_point() +
+  scale_x_log10() +
+  theme_bw()
+ 
+ggplotly(p)
+```
+
+
+# Sharing with Github  
+    * Name your .rmd file "index.rmd", save it to a folder, and knit to create index.html
+    * Create a repository on github using your working folder
+    * On your github onlnie repo, go to _Settings_ -> _Github Pages_ -> _Source_ -> _Master Branch_ -> _Save_
+    * Wait a little and your .html file will be available at username.github.io/repoName
+
+
+
+# Statistical Aphorisms: Potent, Possibly Problemaic, & Occasionally Poignant     
+
+> The field of statistics is the science of learning from data. When statistical principles are correctly applied, statistical analyses tend to produce accurate results. What's more, the analyses even account for real-world uncertainty in order to calculate the probability of being incorrect.  
+> Statisticians offer essential insight in determining which data, analyses, and conclusions are trustworthy. A statistician can be a study's guide through a minefield of potential pitfalls, any of which could produce misleading conclusions.
+
+[Jim Frost](http://statisticsbyjim.com/glossary/statistics/)
+
+
+> Statistics ... the most important science in the whole world: for upon it depends the practical application of every other science and of every art; the one science essential to all political and social administration, all education, all organisation based upon experience, for it only gives the results of our experience.
+
+[Florence Nightingale](https://www.history.com/topics/womens-history/florence-nightingale-1)
+
+
+> While the individual man is an insoluble puzzle, in the aggregate he becomes a mathematical certainty. You can, for example, never foretell what any one man will be up to, but you can say with precision what an average number will be up to. Individuals vary, but percentages remain constant. So says the statistician.
+
+[Arthur Conan Doyle](https://www.arthurconandoyle.com/biography.html)
+
+
+> The greatest moments are those when you see the result pop up in a graph or in your statistical analysis - that moment you realize you know something no one else does and you get the pleasure of thinking about how to tell them.
+
+[Emily Oster](https://www.brown.edu/research/projects/oster/)  
+
+
+> Cognitive psychology tells us that the unaided human mind is vulnerable to many fallacies and illusions because of its reliance on its memory for vivid anecdotes rather than systematic statistics
+
+[Steven Pinker](https://stevenpinker.com/)  
+
+
+> The subjectivist (i.e. Bayesian) states his judgments, whereas the objectivist sweeps them under the carpet by calling assumptions knowledge, and he basks in the glorious objectivity of science.
+
+[I.J. Good](https://en.wikipedia.org/wiki/I._J._Good)  
+
+
+> Conducting data analysis is like drinking a fine wine. It is important to swirl and sniff the wine, to unpack the complex bouquet and to appreciate the experience. Gulping the wine doesn't work.
+
+[Daniel B. Wright](https://directory.engr.wisc.edu/cee/Faculty/Wright_Daniel/)  
+
+
+> To call in the statistician after the experiment is done may be no more than asking him to perform a post-mortem examination: he may be able to say what the experiment died of.
+
+[Ronald Fisher](https://www.famousscientists.org/ronald-fisher/)  
+
+
+> The combination of some data and an aching desire for an answer does not ensure that a reasonable answer can be extracted from a given body of data.
+
+[John Tukey](https://www.britannica.com/biography/John-Wilder-Tukey)  
+
+
+> Correlation doesn't imply causation, but it does waggle its eyebrows suggestively and gesture furtively while mouthing 'look over there'
+
+[Randall Munroe](https://xkcd.com/about/)  
+
+
+> An approximate answer to the right problem is worth a good deal more than an exact answer to an approximate problem.
+
+[John Tukey](https://www.stat.berkeley.edu/~brill/papers/life.pdf)  
+
+
+> Statistical Thinking will one day be as necessary for efficient citizenship as the ability to read and write.
+
+[H.G. Wells](https://www.abs.gov.au/websitedbs/a3121120.nsf/home/Why+understanding+statistics+matters)  
+
+
+> The statistician cannot evade the responsibility for understanding the process he applies or recommends.
+
+[Sir Ronald A Fisher](https://www.famousscientists.org/ronald-fisher/)  
+
+
+> Statistics - a subject which most statisticians find difficult but which many physicians are experts on.
+
+[Stephen S Senn](http://www.senns.demon.co.uk/)  
+
+
+> The greatest value of a picture is when it forces us to notice what we never expected to see.
+
+[John Tukey](https://www.britannica.com/biography/John-Wilder-Tukey)  
+
+
+> Data do not speak for themselves - they need context, and they need skeptical evaluation.
+
+[Allen Wilcox](https://irp.nih.gov/pi/allen-wilcox)  
+
+
+> There are no routine statistical questions, only questionable statistical routines.
+
+[Sir David Cox](https://www.statisticsviews.com/details/feature/5770651/I-would-like-to-think-of-myself-as-a-scientist-who-happens-largely-to-specialise.html)  
+
+
+> To find out what happens when you change something, it is necessary to change it.
+
+[George Box, Stuart Hunter, & William Gordon Hunter](https://williamghunter.net/)  
+
+
+> It is the mark of a truly intelligent person to be moved by statistics.
+
+[George Bernard Shaw](https://www.britannica.com/biography/George-Bernard-Shaw)  
+
+
+> The individual source of the statistics may easily be the weakest link.
+
+[Karl Pearson](https://en.wikipedia.org/wiki/Josiah_Stamp,_1st_Baron_Stamp)  
+
+
+> It's easy to lie with statistics; it's easier to lie without them.
+
+[Frederick Mosteller](https://www.umass.edu/wsp/resources/tales/mosteller.html)  
+
+
+> Aggregate statistics can sometimes mask important information
+
+[Ben Bernanke](https://www.brookings.edu/blog/ben-bernanke/)  
+
+
+> If you torture the data enough, nature will always confess.
+
+[Ronald Coase](https://www.econlib.org/library/Enc/bios/Coase.html)  
+
+
+> We are drowning in information and starving for knowledge.
+
+[Rutherford D Rogers](http://www.greatthoughtstreasury.com/author/rutherford-d-rogers)  
+
+
+> Prediction is very difficult, especially about the future.
+
+[Niels Bohr](https://www.nobelprize.org/prizes/physics/1922/bohr/biographical/)  
+
+
+> Those who ignore statistics are condemned to reinvent it.
+
+[Brad Efron](http://statweb.stanford.edu/~ckirby/brad/)
+
+
+> Strange events permit themselves the luxury of occurring
+
+[Charlie Chan](http://charliechanfamily.tripod.com/id6.html)  
+
+
+> All generalizations are false, including this one.
+
+[Mark Twain](https://en.wikipedia.org/wiki/Mark_Twain)  
+
+
+> Absence of evidence is not evidence of absence
+
+[Carl Sagan](https://www.britannica.com/biography/Carl-Sagan)  
+
+
+> In God we trust. All others must bring data.
+
+[W. Edwards Deming](https://www.bl.uk/people/w-edwards-deming)  
+
+
+> All models are wrong, but some are useful
+
+[George E.P. Box](https://asq.org/about-asq/honorary-members/box)  
+
+
+> Figures don't lie, but liars do figure.
+
+[Mark Twain](https://en.wikipedia.org/wiki/Mark_Twain)  
+
+
+> Statistics is the grammar of science
+
+[Karl Pearson](https://www.britannica.com/biography/Karl-Pearson)  
+
+
+> The plural of anecdote is not data.
+
+[Roger Brinner](http://rogerbrinner.com/about/)  
+
+
+> It depends.
+
+[Greg Matthews](https://statsinthewild.com/)  
+
+
+
+
+# References:  
+* [Pimp my RMD](https://holtzy.github.io/Pimp-my-rmd/)
+* [R Markdown](https://rmarkdown.rstudio.com/)
+* [Yihui](https://yihui.name/knitr/)

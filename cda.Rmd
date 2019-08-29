@@ -1,0 +1,21 @@
+---
+title: "Categorical Data Analysis"
+description: |
+  Graduate Level Coursework in Categorical Data Analysis at LUC
+author:
+  - name: Partick Oster
+    url: https://patrickoster.github.io
+    affiliation: LUC Statistics Department
+    affiliation_url: https://patrickoster.github.io/cda/
+date: "`r Sys.Date()`"
+site: radix::radix_website
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+What is CDA?
+
+Categorical Data Analysis  
