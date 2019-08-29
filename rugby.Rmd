@@ -1,0 +1,363 @@
+---
+title: "Analyzing Fatigue in Canadian Women's Rugby"
+subtitle: "DataFest 2019"
+author: "Patrick Oster"
+date: "`r Sys.Date()`"
+output:
+  tufte::tufte_html: default
+  code_folding: "hide"
+  df_print: kable
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, scipen = 999)
+rm(list = ls())
+
+# Load Required Packages
+pkgs <- list('tufte', 'knitr', 'prettydoc', 'feather', 'readxl', 'chron', 'ggthemes', 'plm', 'spacetime', 'SpatioTemporal', 'raster', 'spatstat', 'trip', 'tripEstimation', 'diveMove', 'move', 'trackeR', 'ggmap', 'rgdal', 'maptools', 'gganimate', 'tidyverse', 'gifski', 'Rserve', 'snow', 'snowfall', 'parallel', 'data.table', 'pacman', 'randomcoloR')
+
+for(i in 1:length(pkgs)){
+  if(unlist(pkgs)[i] %in% rownames(installed.packages())){
+    print(unlist(pkgs)[i])
+  } else {
+    install.packages(unlist(pkgs)[i])
+  }
+}
+
+for(i in 1:length(pkgs)){
+  library(pkgs[[i]], character.only = TRUE)
+}
+
+p_load(dplyr, 'tufte', 'knitr', 'prettydoc', 'feather', 'readxl', 'chron', 'ggthemes', 'plm', 'spacetime', 'SpatioTemporal', 'raster', 'spatstat', 'trip', 'tripEstimation', 'diveMove', 'move', 'trackeR', 'ggmap', 'rgdal', 'maptools', 'gganimate', 'tidyverse', 'gifski', 'Rserve', 'snow', 'snowfall', 'parallel', 'data.table', 'pacman', 'randomcoloR')
+
+# Import Data
+require(data.table)
+start <- Sys.time()
+getwd()
+df.games <- fread(file = "/Users/Patrick/Dropbox/data/datafest/clean/df_games.csv")
+df.gps <- fread(file = "/Users/Patrick/Dropbox/data/datafest/clean/df_gps.csv")
+df.gps <- df.gps %>% left_join(df.games) %>% 
+  mutate(day = game)
+df.gps <- df.gps %>% mutate(t = chron(times = game.time, dates = day))
+df.wellness <- fread(file = "/Users/Patrick/Dropbox/data/datafest/clean/df_wellness.csv")
+df.rpe <- fread(file = "/Users/Patrick/Dropbox/data/datafest/clean/rpe_clean.csv")
+end <- Sys.time()
+end - start
+```
+
+```{r Summary Stats, include = FALSE, warning = FALSE}
+df.wellness$Fatigue <- as.factor(df.wellness$Fatigue)
+levels(df.wellness$Fatigue) <- c("Exhausted", "2","3", "Average","5","6", "Fresher than Usual")
+a <- ggplot(df.wellness, aes(x = Fatigue)) + 
+  geom_histogram(stat = "count") + 
+  labs(x = "Level of Fatigue", 
+       y = "Count of Fatigue Level Response", 
+       title = "Self-Reported Fatigue Levels") + 
+  theme_economist()
+```
+
+```{r Output 0, fig.margin = TRUE, echo = FALSE}
+a
+```
+
+# Initial Analysis  
+
+## Strategy
+* Use games data to identify the most "competitive" tournament from the dataset
+    + Measure competition through totals for points scored, points allowed, total points scored and allowed, and point differentials
+    + I personally like total point differential as an indicator of competition because it seems like an intuitive proxy for how close games are (and it makes sense that professional sports players try harder in close games)
+* Subset GPS data based on the most "competitive" tournament
+    + Purpose is to make using GPS data more computationally reasonable for visualization (big data file)
+    
+
+# Summary of Game Outcomes for 2017-2018 Season (Game Level)  
+```{r Game Summaries}
+df <- df.games
+# Maximum Number of Games in each tournament
+df.game.sum <- df %>% 
+  group_by(tour, game) %>% 
+  summarise(Date = min(date), 
+            points.scored = sum(pts.scored), 
+            points.allowed = sum(pts.allowed), 
+            total.points = sum(pts.tot), 
+            differential = sum(pts.dif)) %>% 
+  arrange(game) %>% mutate(game = as.character(game))
+# game coded as character to make table more legible
+```
+
+```{r Output 1, echo = TRUE}
+kable(df.game.sum, caption = "Season Game Summary")
+df.game.sum$game <- as.numeric(df.game.sum$game)
+```
+
+# Summary of Game Outcomes for 2017-2018 Season (Tournament Level)   
+```{r Start with Games Data}
+df <- df.games
+# Maximum Number of Games in each tournament
+df.tour.sum <- df %>% 
+  group_by(tour) %>% 
+  summarise(games = max(as.numeric(t.game)),  
+            wins = sum(as.numeric(win)), 
+            points.scored = sum(pts.scored), 
+            points.allowed = sum(pts.allowed), 
+            total.points = sum(pts.tot), 
+            differential = sum(pts.dif))
+```
+
+```{r Output 2, echo = TRUE}
+kable(df.tour.sum, caption = "Summary of Games by Tournament")
+```
+
+# Paris Tournament Game Outcome Summary (Game Level)  
+```{r Paris Tournament Game Stats, echo = FALSE}
+df.paris <- df.games %>% filter(tour == "Paris")
+kable(df.paris, caption = "Paris Tournament Games")
+```
+
+# Paris Tournament GPS Stats (Player/Tournament Level)  
+```{r GPS Stats by Player}
+# Subsetting GPS data by Paris Tournament Games
+df <- df.gps %>% filter(game %in% unique(df.paris$game))
+out <- data.frame()
+
+for(i in unique(df$player)){
+  playerid <- df %>% 
+  filter(player == i) %>% 
+  arrange(game, half, time, frame) %>% 
+  summarise(player = mean(player),
+            avg.speed = mean(Speed),
+            max.speed = max(Speed),
+            avg.acc.imp = mean(AccelImpulse),
+            max.imp = max(AccelImpulse),
+            avg.acc.load = mean(AccelLoad),
+            max.load = max(AccelLoad),
+            avg.x = mean(AccelX),
+            max.x = max(AccelX),
+            avg.y = mean(AccelY),
+            max.y = max(AccelY),
+            avg.z = mean(AccelZ),
+            max.z = max(AccelZ),
+            avg.long = mean(Longitude),
+            avg.lat = mean(Latitude))
+  out <- rbind(out, playerid)
+}
+```
+
+```{r Output 4, echo = TRUE}
+kable(out, caption = "Paris Tournament GPS Stats by Player")
+```
+
+# Paris Tournament GPS Stats (Player/Game Level)  
+```{r GPS Stats by Player and Game}
+# Subsetting GPS data by Paris Tournament Games
+df <- df.gps %>% filter(game %in% unique(df.paris$game))
+out <- data.frame()
+
+for(i in unique(df$player)){
+  for(k in unique(df$game)){
+    playerid <- df %>% 
+      filter(game == k, player == i) %>% 
+      arrange(game, half, time, frame) %>% 
+      summarise(player = mean(player), 
+                game = mean(game),
+                avg.speed = mean(Speed), 
+                max.speed = max(Speed), 
+                avg.acc.imp = mean(AccelImpulse), 
+                max.imp = max(AccelImpulse), 
+                avg.acc.load = mean(AccelLoad), 
+                max.load = max(AccelLoad), 
+                avg.x = mean(AccelX), 
+                max.x = max(AccelX), 
+                avg.y = mean(AccelY), 
+                max.y = max(AccelY), 
+                avg.z = mean(AccelZ), 
+                max.z = max(AccelZ), 
+                avg.long = mean(Longitude), 
+                avg.lat = mean(Latitude)) 
+    out <- rbind(out, playerid)
+  }
+}
+```
+
+```{r Output 5, echo = TRUE}
+kable(out, caption = "Paris Tournament GPS Stats by Player & Game")
+```
+
+# GPS Season Stats (Individual Level)  
+```{r Player 14 GPS Season Stats}
+games <- seq(from = 1, to = 38, by = 1)
+df <- df.gps %>% filter(player == 14, game %in% games)
+attach(df)
+
+out <- data.frame()
+for(i in games){
+  p14 <- df %>% 
+  filter(game == i) %>% 
+  arrange(game, half, time, frame) %>% 
+  summarise(player = 14,
+            game = games[i],
+            avg.speed = mean(Speed),
+            max.speed = max(Speed),
+            avg.acc.imp = mean(AccelImpulse),
+            max.imp = max(AccelImpulse),
+            avg.acc.load = mean(AccelLoad),
+            max.load = max(AccelLoad),
+            avg.x = mean(AccelX),
+            max.x = max(AccelX),
+            avg.y = mean(AccelY),
+            max.y = max(AccelY),
+            avg.z = mean(AccelZ),
+            max.z = max(AccelZ),
+            avg.long = mean(Longitude),
+            avg.lat = mean(Latitude))
+  out <- rbind(out, p14)
+}
+```
+
+```{r Output 6, echo = TRUE}
+kable(out, caption = "Player 14 GPS Stats by Game")
+```
+
+# GPS Season Stats (Individual/Game Level)  
+```{r Other GPS Stats}
+games <- seq(from = 1, to = 38, by = 1)
+players <- seq(from = 1, to = 16, by = 1)
+out <- data.frame()
+out
+
+for(i in players){
+  for(j in games){
+    p14 <- df.gps %>% 
+      filter(player == i, game == j) %>% 
+      arrange(game, half, time, frame) %>% 
+      summarise(player = players[i], 
+                game = games[j], 
+                avg.speed = mean(Speed), 
+                max.speed = max(Speed), 
+                avg.acc.imp = mean(AccelImpulse), 
+                max.imp = max(AccelImpulse), 
+                avg.acc.load = mean(AccelLoad), 
+                max.load = max(AccelLoad), 
+                avg.x = mean(AccelX), 
+                max.x = max(AccelX), 
+                avg.y = mean(AccelY), 
+                max.y = max(AccelY), 
+                avg.z = mean(AccelZ), 
+                max.z = max(AccelZ), 
+                avg.long = mean(Longitude), 
+                avg.lat = mean(Latitude))
+    out <- rbind(out, p14)
+  }
+}
+```
+
+```{r Output 7, echo = TRUE}
+kable(out, caption = "Summarized GPS Data by Player and Game")
+nrow(out); 16*38
+```
+
+# GPS Season Stats (Team/Game Level)  
+```{r GPS Season Stats}
+tournaments <- df.games %>% distinct(tour, game)
+
+gps_season_stats <- out %>% group_by(game) %>% 
+  summarise(avg_speed = mean(avg.speed, na.rm = TRUE),  
+            avg_imp = mean(avg.acc.imp, na.rm = TRUE),  
+            avg_load = mean(avg.acc.load, na.rm = TRUE), 
+            avg_x = mean(avg.x, na.rm = TRUE), 
+            avg_y = mean(avg.y, na.rm = TRUE),
+            avg_z = mean(avg.z, na.rm = TRUE)) %>% 
+  mutate_if(is.double, round, 4)
+
+gps_season_stats <- cbind(tournaments$tour, gps_season_stats)
+
+names(gps_season_stats) <- c("Tournament", "Game", "Average Speed",
+                             "Average Impulse Accel",
+                             "Average Acceleromator Load",
+                             "Average X Acccel",
+                             "Average Y Accel",
+                             "Average Z Accel")
+```
+
+```{r Output 8, echo = TRUE}
+kable(gps_season_stats)
+```
+
+# Player GPS Stats (Individual/Season Level)  
+```{r Player Season GPS Stats}
+player_gps_season_stats <- out %>% 
+  group_by(player) %>% 
+  summarise(games = sum(is.finite(max.speed)), 
+            avg_speed = mean(avg.speed, na.rm = TRUE), 
+            max_speed = max(max.speed, na.rm = TRUE), 
+            avg_imp = mean(avg.acc.imp, na.rm = TRUE), 
+            max_imp = max(max.imp, na.rm = TRUE), 
+            avg_load = mean(avg.acc.load, na.rm = TRUE), 
+            max_load = max(max.load, na.rm = TRUE), 
+            avg_x = mean(avg.x, na.rm = TRUE), 
+            max_x = max(max.x, na.rm = TRUE), 
+            avg_y = mean(avg.y, na.rm = TRUE), 
+            max_y = max(max.y, na.rm = TRUE), 
+            avg_z = mean(avg.z, na.rm = TRUE), 
+            max_z = max(max.z, na.rm = TRUE)) %>% 
+  mutate_if(is.double, round, 4)
+
+names(player_gps_season_stats) <- c("Player ID", "Games Played",  
+                                    "Average Speed", "Max Speed", 
+                                    "Average Impulse Accel", "Max Impulse Accel", 
+                                    "Average Acceleromator Load", "Max Acceleromator Load", 
+                                    "Average X Acccel", "Max X Accel", 
+                                    "Average Y Accel", "Max Y Accel", 
+                                    "Average Z Accel", "Max Z Accel")
+
+```
+
+```{r Output 9, echo = TRUE}
+kable(player_gps_season_stats, 
+      caption = "Women's Sevens Rugby GPS Stats (Team Canada, 2017-2018 Season)")
+```
+
+# Spatio-Temporal Visualization  
+
+```{r Data Step, include = FALSE}
+gps <- fread("/Users/Patrick/Dropbox/data/datafest/raw/gps.csv")
+names(gps) <- c("game", "half", "player", 
+                "frame", "time", "game.time", 
+                "speed", "accel.impulse", "accel.load", 
+                "accel.x", "accel.y", "accel.z", 
+                "longitude", "latitude")
+
+df <- gps[gps$game == 1 & gps$player != 10,]
+```
+
+## Player Tracker: Game 1 
+
+```{r Spatio Temporal Data Viz, echo = FALSE, include = TRUE}
+start1 <- Sys.time()
+start2 <- Sys.time()
+
+g1 <- ggplot(df, aes(x = latitude,
+                     y = longitude,
+                     alpha = 0.3,
+                     col = as.factor(player),
+                     size = cumsum(accel.impulse))) +
+  geom_point() + 
+  transition_time(frame, range = NULL) + 
+  shadow_wake(wake_length = 0.025, alpha = FALSE) + 
+  guides(alpha = FALSE)
+
+g1 <- g1 + 
+  transition_time(frame, range = NULL) + 
+  labs(title = "In-Game Player Tracker", 
+       subtitle = "Game Time: {frame_time}", 
+       x = "Longitude Coodinate", 
+       y = "Latitude Coordinate", 
+       col = "Player ID",
+       size = "Cum. Impulse Accel")
+
+end1 <- Sys.time()
+end1 - start1
+g1
+end2 <- Sys.time()
+end2 - start2
+```
