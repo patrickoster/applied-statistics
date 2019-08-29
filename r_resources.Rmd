@@ -1,0 +1,18 @@
+---
+title: "R Resources"
+description: |
+  General R Links
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* [An Introduction to R](https://cran.r-project.org/doc/manuals/R-intro.pdf): Downloadable PDF for new R users
+* [Quick-R](https://www.statmethods.net/): Useful resource for beginners
+* [CRAN Task Views](https://cran.r-project.org/web/views/): R packages by topic
+* [Advanced R](http://adv-r.had.co.nz/): Hadley Wickham's Guide to Advanced R Programming
+* [DataCamp](https://www.datacamp.com/): Interactive courses & tutorials for learning R programming
+* [Customizing RStudio](https://support.rstudio.com/hc/en-us/articles/200549016-Customizing-RStudio#general): RStudio Software Preference Guide
+* [RStudio Connections](https://support.rstudio.com/hc/en-us/articles/115010915687): Guide to connecting RStudio to data sources

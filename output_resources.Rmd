@@ -1,0 +1,20 @@
+---
+title: "R Output Links"
+description: |
+  Resources for Formatting in R Markdown
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* [Kieran Healy](https://kieranhealy.org/resources/): General resources for R Markdown ouput from Duke's Dr. Kieran Healy 
+* [R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/): Detailed guide from the original package writers
+* [R Markdown: Reference Guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf): Downloadable PDF of guide to basic markdown syntax
+* [R Markdown: Gallery of Outputs](https://rmarkdown.rstudio.com/gallery.html): Examples of possible R markdown ouput
+* [R Markdown Chunk Options](https://yihui.name/knitr/options/#chunk-options): Guide for R code chunk evaluation options
+* [List of LaTeX Mathematical Symbols](https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols): LaTeX symbol syntax
+* [Exhaustive List of Mathematical Symbols with Meanings](https://sciencestruck.com/list-of-mathematical-symbols-their-meaning): List of mathematical symbols (in case you don't remember a symbol's name)
+* [Prettydoc HTML Templates](https://cran.r-project.org/web/packages/prettydoc/vignettes/architect.html): A few R markdown HTML templates
+* [Tufte Handout Template](https://rstudio.github.io/tufte/): Another nice template

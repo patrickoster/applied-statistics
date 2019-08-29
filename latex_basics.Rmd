@@ -1,0 +1,60 @@
+---
+title: "Introduction to LaTeX"
+description: |
+  Formatting R Markdown Output
+author: "Patrick Oster"
+date: "10/2/2018"
+output:
+  prettydoc::html_pretty:
+    df_print: kable
+    highlight: github
+    theme: architect
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+[Home Page](https://patrickoster.github.io/)
+
+## What is LaTeX?
+* Clarity & legibility of reporting is essential for drawing insights to inform data-driven decision making
+* LaTeX is a system for processing documents that enhances clarity & legibility of reporting
+* Although the syntax is relatively intuitive, getting started can be tricky, thus I've decided to create this guide for LaTeX basics in R Markdown.  
+* In order to knit to pdf using latex in an R markdown file, the output section of your [YAML](https://yaml.org/) should include the following:
+  - **output:  
+      pdf_document:  
+      latex_engine: xelatex**  
+  - Be sure that "pdf_document:" is indented one tab and "latex_engine: xelatex" is indented two tabs, otherwise knitting to pdf will not work.
+  - More on [YAML metadata & R document output formatting](https://bookdown.org/yihui/rmarkdown/html-document.html)
+
+## Equations & Expressions:
+* **General**
+  + Begin and end equations with $
+  + Two spaces (or a tab) after each $ moves the next equation to the next line
+  + Backslashes will never be printed because they are essential to Latex
+    - note: knit to test examples
+  + Plus/minus denoted by PlusMinus(x, y, head, xhead, yhead, digits = 2, 
+          character.only = FALSE, ...)
+* **Special characters (greek letters, etc)**
+  + Special characters/symbols initiated with a backslash
+  + Upper/lowercase of Greek letters indicated by case of first letter of English spelling
+    - *Ex: Sigma vs. sigma* outputs **$\Sigma$ vs. $\sigma$**  
+* **Special symbols (hats, bars, etc.)**
+  + Like characters, special symbols are initiated with a backslash
+  + Brackets indicate what symbol to place the symbol on
+    - *Ex: bar{x} & hat{p}* outputs **$\bar{x}$ & $\hat{p}$**  
+* **Sub/superscripts**
+  + Within an equation or an expression and after a base letter or symbol, use a carat (^) and a underscore (_) to initiate superscript and subscript, respectively
+  + The super/sub text should be within a pair of brackets after the carat or underscore
+    - *Ex: X_{i} & Y^{2}* outputs **$X_{i}$ & $Y^{2}$**  
+* Fractions
+  + Similar to calling a function, frac{}{} can be called after a backslash
+  + The first set of brackets is for the numerator and the second is for the denominator
+    - *Ex: frac{Numerator}{Denominator}* outputs **$\frac{Numerator}{Denominator}$**  
+    
+  
+## More on R Documentation Output & Formatting
+* Quite a bit goes into the formatting of R documents, admittedly more than I am totally familiar with
+* If you are interested in learning more, I have provided my collection of [R Markdown Output Resources]
